@@ -4,7 +4,7 @@ LIST_NAME = "TRANSPORTE"
 
 # Credenciales (en producción usar variables de entorno)
 USERNAME = "julian.echeverria@mhc.com.co"
-PASSWORD = "MarzoMHC2025"
+PASSWORD = "MayoMHC2025"
 
 # Configuración de email
 EMAIL_FROM = "julian.echeverria@mhc.com.co"

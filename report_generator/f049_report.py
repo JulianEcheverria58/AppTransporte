@@ -2,101 +2,86 @@ from fpdf import FPDF
 from datetime import datetime
 from PIL import Image
 import os
-import base64
-from io import BytesIO
 
 class F049Report:
     def __init__(self):
-        # Definir la ruta exacta del logo
         self.default_logo_path = r"C:\Users\julian.echeverria\OneDrive - MHC\Escritorio\Python\AppTransporte\logo.png"
-
+        self.font_size = 8
+        self.line_height = 4
+        self.min_row_height = 8
+        self.header_bg_color = (240, 240, 240)
+        
     def generate(self, df, output_path=None, logo_path=None, **kwargs):
-        """Genera el informe F-049 con la ruta específica del logo"""
-        if output_path is None:
+        """Generate F-049 report PDF with perfect cell formatting"""
+        if not output_path:
             output_path = f"F049_Reporte_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         
         pdf = FPDF(orientation='L', unit='mm', format='A4')
         pdf.add_page()
-        
-        # Configurar márgenes
         pdf.set_margins(15, 10, 15)
         pdf.set_auto_page_break(True, margin=15)
         
-        # --- Cabecera con logo garantizado ---
         self._draw_header_with_logo(pdf, logo_path)
-        
-        # --- Contenido principal ---
         self._add_report_content(pdf, df, **kwargs)
         
-        # Generar PDF
         pdf.output(output_path)
-        print(f"PDF generado correctamente en: {output_path}")
+        print(f"PDF generated successfully: {output_path}")
         return output_path
 
     def _draw_header_with_logo(self, pdf, logo_path=None):
-        """Dibuja la cabecera con el logo en la ruta especificada"""
+        """Draw report header with centered logo"""
         header_height = 25
-        total_width = 277  # Ancho A4 horizontal menos márgenes
+        total_width = 277
         
-        # Usar la ruta proporcionada o la ruta por defecto
-        final_logo_path = logo_path if logo_path else self.default_logo_path
-        
-        # 1. Sección del logo (25%)
-        logo_section = total_width * 0.25
-        pdf.set_xy(15, 10)
-        
-        # Intentar cargar el logo
+        # Try to load logo
+        final_logo_path = logo_path or self.default_logo_path
         logo_loaded = False
+        
         if os.path.exists(final_logo_path):
             try:
                 img = Image.open(final_logo_path)
-                img_w, img_h = img.size
-                aspect_ratio = img_w / img_h
-                
+                aspect_ratio = img.width / img.height
                 max_logo_h = header_height - 4
-                max_logo_w = logo_section - 10
-                
+                max_logo_w = (total_width * 0.25) - 10
                 logo_w = min(max_logo_w, max_logo_h * aspect_ratio)
                 logo_h = logo_w / aspect_ratio
                 
-                logo_x = 15 + (logo_section - logo_w) / 2
-                logo_y = 10 + (header_height - logo_h) / 2
-                
-                pdf.image(final_logo_path, x=logo_x, y=logo_y, w=logo_w, h=logo_h)
+                pdf.image(
+                    final_logo_path,
+                    x=15 + ((total_width * 0.25) - logo_w)/2,
+                    y=10 + (header_height - logo_h)/2,
+                    w=logo_w,
+                    h=logo_h
+                )
                 logo_loaded = True
-                print(f"Logo cargado desde: {final_logo_path}")
             except Exception as e:
-                print(f"Error al cargar el logo: {str(e)}")
+                print(f"Error loading logo: {str(e)}")
         
         if not logo_loaded:
-            # Mostrar área de logo con mensaje
             pdf.set_draw_color(0, 0, 0)
-            pdf.set_fill_color(240, 240, 240)
-            pdf.rect(15, 10, logo_section, header_height, 'DF')
+            pdf.set_fill_color(*self.header_bg_color)
+            pdf.rect(15, 10, total_width * 0.25, header_height, 'DF')
             pdf.set_font("Arial", 'I', 8)
             pdf.set_xy(15, 10 + header_height/2 - 3)
-            pdf.cell(logo_section, 6, "LOGO NO ENCONTRADO", 0, 0, 'C')
-            print(f"No se pudo cargar el logo desde: {final_logo_path}")
+            pdf.cell(total_width * 0.25, 6, "LOGO NO ENCONTRADO", 0, 0, 'C')
 
-        # 2. Sección central (50%)
-        center_section = total_width * 0.5
+        # Center section
         pdf.set_font("Arial", 'B', 14)
-        pdf.set_xy(15 + logo_section + 5, 10 + 5)
-        pdf.cell(center_section - 10, 8, "RECEPCION Y CONTROL DE MATERIALES", 0, 0, 'C')
-        pdf.set_xy(15 + logo_section + 5, 10 + 15)
-        pdf.cell(center_section - 10, 8, "EN LA VIA Y/O ALMACEN", 0, 0, 'C')
+        pdf.set_xy(15 + (total_width * 0.25) + 5, 10 + 5)
+        pdf.cell(total_width * 0.5 - 10, 8, "RECEPCION Y CONTROL DE MATERIALES", 0, 0, 'C')
+        pdf.set_xy(15 + (total_width * 0.25) + 5, 10 + 15)
+        pdf.cell(total_width * 0.5 - 10, 8, "EN LA VIA Y/O ALMACEN", 0, 0, 'C')
 
-        # 3. Sección derecha (25%)
-        right_section = total_width * 0.25
+        # Right section
         pdf.set_font("Arial", 'B', 16)
-        pdf.set_xy(15 + logo_section + center_section, 10 + header_height/2 - 8)
-        pdf.cell(right_section, 16, "F-049", 0, 0, 'C')
+        pdf.set_xy(15 + (total_width * 0.75), 10 + header_height/2 - 8)
+        pdf.cell(total_width * 0.25, 16, "F-049", 0, 0, 'C')
 
     def _add_report_content(self, pdf, df, **kwargs):
-        """Añade el contenido principal del reporte"""
+        """Generate main report content with perfect cell alignment"""
         start_y = 40
         
-        # Información de obra y fecha
+        # Project info
         pdf.set_font("Arial", 'B', 10)
         pdf.set_xy(15, start_y)
         pdf.cell(35, 8, "CODIGO DE OBRA:", 0, 0)
@@ -109,31 +94,72 @@ class F049Report:
         pdf.cell(40, 8, kwargs.get('fecha', datetime.now().strftime('%d/%m/%Y %H:%M')), 0, 1)
         pdf.ln(8)
         
-        # Tabla principal
+        # Table configuration
         headers = [
             "PROVEEDOR", "REMISIÓN", "IDENTIFICACION LOTE", 
             "DESCRIPCION", "UND", "CERTIFICADO DE CALIDAD",
             "INSPECCION VISUAL", "ACTIVIDAD A E."
         ]
-        col_widths = [35, 25, 35, 50, 15, 40, 30, 30]
+        col_widths = [40, 25, 35, 50, 15, 40, 30, 30]
         
-        # Encabezados
-        pdf.set_font("Arial", 'B', 8)
+        # Draw headers
+        pdf.set_font("Arial", 'B', self.font_size)
+        initial_y = pdf.get_y()
+        
+        # Header background
+        pdf.set_fill_color(*self.header_bg_color)
+        for i in range(len(headers)):
+            pdf.rect(15 + sum(col_widths[:i]), initial_y, col_widths[i], self.min_row_height, 'F')
+        
+        # Header text
         for i, header in enumerate(headers):
-            pdf.cell(col_widths[i], 8, header, 1, 0, 'C')
-        pdf.ln()
+            pdf.set_xy(15 + sum(col_widths[:i]), initial_y)
+            pdf.cell(col_widths[i], self.min_row_height, header, 0, 0, 'C')
         
-        # Datos
-        pdf.set_font("Arial", '', 8)
+        pdf.set_y(initial_y + self.min_row_height)
+        
+        # Data rows
+        pdf.set_font("Arial", '', self.font_size)
+        
         for _, row in df.iterrows():
+            current_y = pdf.get_y()
+            max_cell_height = self.min_row_height
+            
+            # Calculate required height for each cell
+            cell_data = []
             for i, header in enumerate(headers):
                 value = str(row.get(header.split()[0].upper(), ''))
-                if header == "UND":
-                    value = "M3"
-                pdf.cell(col_widths[i], 8, value, 1, 0, 'C' if header in ['UND', 'REMISIÓN'] else 'L')
-            pdf.ln()
+                if header == "UND": value = "M3"
+                
+                # Calculate text height
+                lines = pdf.multi_cell(
+                    col_widths[i], 
+                    self.line_height,
+                    value, 
+                    border=0,
+                    align='C' if header in ['UND', 'REMISIÓN'] else 'L',
+                    split_only=True
+                )
+                cell_height = max(self.min_row_height, len(lines) * self.line_height)
+                max_cell_height = max(max_cell_height, cell_height)
+                cell_data.append((value, cell_height))
+            
+            # Draw cells with uniform height
+            for i, (value, _) in enumerate(cell_data):
+                pdf.set_xy(15 + sum(col_widths[:i]), current_y)
+                pdf.multi_cell(
+                    col_widths[i], 
+                    max_cell_height,
+                    value, 
+                    border=1,
+                    align='C' if headers[i] in ['UND', 'REMISIÓN'] else 'L',
+                    fill=False
+                )
+            
+            # Move to next row
+            pdf.set_xy(15, current_y + max_cell_height)
         
-        # Pie de página
+        # Footer
         pdf.ln(10)
         pdf.set_font("Arial", 'B', 10)
         pdf.cell(60, 8, "RESPONSABLE:", 0, 0)
@@ -144,26 +170,25 @@ class F049Report:
         pdf.cell(0, 8, f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}", 0, 0, 'R')
 
 
-# Ejemplo de uso
+# Example usage
 if __name__ == "__main__":
     import pandas as pd
     
-    # Datos de ejemplo
+    # Sample data matching your image
     data = {
-        'PROVEEDOR': ['MHC', 'Proveedor 2'],
-        'REMISION': ['12345', '67890'],
-        'LOTE': ['LOTE-001', 'LOTE-002'],
-        'DESCRIPCION': ['Material de construcción', 'Tuberías PVC'],
-        'CERTIFICADO_CALIDAD': ['SI', 'NO'],
-        'INSPECCION_VISUAL': ['Aprobado', 'Rechazado'],
-        'ACTIVIDAD_EJECUTAR': ['Almacenar', 'Devolver']
+        'PROVEEDOR': ['TRANSPORTES Y MOVIMIENTOS CIVILES ACC.S.A.S'] * 6,
+        'REMISION': ['121762', '121803', '121763', '121764', '121811', '121811'],
+        'LOTE': ['2812', '2816', '2816', '2817', '2841', '2902'],
+        'DESCRIPCION': ['Relleno Adecuado (Terraglen)'] * 6,
+        'CERTIFICADO_CALIDAD': [''] * 6,
+        'INSPECCION_VISUAL': ['17', '16,38', '16,82', '16,69', '18,03', '18,03'],
+        'ACTIVIDAD_EJECUTAR': [''] * 6
     }
     df = pd.DataFrame(data)
     
-    # Generar reporte (usará la ruta por defecto del logo)
     report = F049Report()
     pdf_path = report.generate(
         df,
         codigo_obra="MAVA-2023",
-        output_path="Reporte_F049_Final.pdf"
+        output_path="F049_Report_Final.pdf"
     )
